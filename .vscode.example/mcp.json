@@ -1,0 +1,21 @@
+{
+	"servers": {
+        "database_tools": {
+            "command": "go",
+            "args": ["run", "."],
+            "env": {
+                "DB_TYPE": "mysql",
+                "DB_HOST": "localhost",
+                "DB_PORT": "3306",
+                "DB_USER": "root",
+                "DB_PASSWORD": "",
+                "DB_NAME": "information_schema,testdb",
+                "DB_READONLY": "false",
+                "ALLOW_RAW_QUERY": "false",
+                "MAX_SELECT_LIMIT": "1000",
+                "MAX_UPDATE_LIMIT": "1",
+                "MAX_DELETE_LIMIT": "1"
+            }
+        }
+	}
+}

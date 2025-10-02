@@ -1,0 +1,12 @@
+.cursor/
+.vscode/
+.env
+.DS_Store
+Thumbs.db
+logs/
+*.log
+*.log.*
+*.log.*.*
+*.log.*.*.*
+*.log.*.*.*.*
+*.exe
