@@ -5,6 +5,7 @@ A Model Context Protocol (MCP) server for PostgreSQL and MySQL databases, implem
 ## Features
 
 ✅ **Database Support**: PostgreSQL and MySQL  
+✅ **SSL/TLS Enabled by Default**: Secure encrypted connections out of the box  
 ✅ **Secure Query Builder**: Uses Squirrel query builder (like Knex for Go)  
 ✅ **SQL Injection Protection**: All queries use parameterized statements  
 ✅ **Identifier Sanitization**: Column/table names validated before use  
@@ -19,7 +20,17 @@ A Model Context Protocol (MCP) server for PostgreSQL and MySQL databases, implem
 
 ### 1. Set Environment Variables
 
+You can use the provided `config.example.env` as a template:
+
 ```bash
+# Copy the example config
+cp config.example.env .env
+
+# Edit with your database credentials
+# Then source it (Unix/Linux/macOS)
+source .env
+
+# Or set variables manually:
 export DB_TYPE=postgres                          # or mysql
 export DB_HOST=localhost
 export DB_PORT=5432                             # or 3306 for MySQL
@@ -31,6 +42,13 @@ export ALLOW_RAW_QUERY=false                     # optional
 export MAX_SELECT_LIMIT=1000                     # optional
 export MAX_UPDATE_LIMIT=1                        # optional
 export MAX_DELETE_LIMIT=1                        # optional
+
+# SSL/TLS Configuration (recommended for production - ENABLED BY DEFAULT)
+export DB_SSLMODE=require                        # PostgreSQL: disable, require, verify-ca, verify-full (default: require)
+export DB_TLS=true                              # MySQL: true, false, skip-verify, preferred (default: true)
+export DB_SSLCERT=/path/to/client-cert.pem      # optional: client certificate path
+export DB_SSLKEY=/path/to/client-key.pem        # optional: client key path
+export DB_SSLROOTCERT=/path/to/ca-cert.pem      # optional: CA certificate path
 ```
 
 ### 2. Build and Run
@@ -58,6 +76,11 @@ All configuration is done via environment variables:
 | `MAX_SELECT_LIMIT` | No | `1000` | Maximum number of rows returned by SELECT queries |
 | `MAX_UPDATE_LIMIT` | No | `1` | Maximum number of rows that can be updated in a single UPDATE query |
 | `MAX_DELETE_LIMIT` | No | `1` | Maximum number of rows that can be deleted in a single DELETE query |
+| `DB_SSLMODE` | No | `require` | **PostgreSQL SSL mode**: `disable`, `require`, `verify-ca`, `verify-full` (⚠️ `disable` not recommended for production) |
+| `DB_TLS` | No | `true` | **MySQL TLS mode**: `true`, `false`, `skip-verify`, `preferred` (⚠️ `false` not recommended for production) |
+| `DB_SSLCERT` | No | `` | Path to client SSL certificate file (for mutual TLS authentication) |
+| `DB_SSLKEY` | No | `` | Path to client SSL key file (for mutual TLS authentication) |
+| `DB_SSLROOTCERT` | No | `` | Path to CA certificate file (for verifying server certificate) |
 
 ## MCP Client Configuration
 
@@ -81,7 +104,8 @@ Create `.cursor/mcp.json` or `.vscode/mcp.json`:
         "ALLOW_RAW_QUERY": "false",
         "MAX_SELECT_LIMIT": "1000",
         "MAX_UPDATE_LIMIT": "1",
-        "MAX_DELETE_LIMIT": "1"
+        "MAX_DELETE_LIMIT": "1",
+        "DB_SSLMODE": "require"
       }
     }
   }
@@ -112,7 +136,8 @@ Add to Claude Desktop configuration file:
         "ALLOW_RAW_QUERY": "false",
         "MAX_SELECT_LIMIT": "1000",
         "MAX_UPDATE_LIMIT": "1",
-        "MAX_DELETE_LIMIT": "1"
+        "MAX_DELETE_LIMIT": "1",
+        "DB_TLS": "true"
       }
     }
   }
@@ -138,7 +163,8 @@ You can configure access to multiple databases by providing a comma-separated li
         "DB_READONLY": "false",
         "MAX_SELECT_LIMIT": "1000",
         "MAX_UPDATE_LIMIT": "1",
-        "MAX_DELETE_LIMIT": "1"
+        "MAX_DELETE_LIMIT": "1",
+        "DB_TLS": "true"
       }
     }
   }
@@ -537,8 +563,74 @@ The server enforces configurable limits on query operations to prevent accidenta
 - Forces deliberate operations for bulk changes
 - Can be adjusted per environment (dev vs production)
 
+## SSL/TLS Configuration
+
+The server now supports SSL/TLS connections with **SSL enabled by default** for enhanced security.
+
+### PostgreSQL SSL Modes
+
+Configure via `DB_SSLMODE` environment variable:
+
+| Mode | Description | Security Level |
+|------|-------------|----------------|
+| `disable` | No SSL encryption ⚠️ **Not recommended for production** | ❌ Low |
+| `require` | **Default**. Requires SSL but doesn't verify server certificate | ✅ Medium |
+| `verify-ca` | Requires SSL and verifies server certificate against CA | ✅✅ High |
+| `verify-full` | Requires SSL, verifies certificate and hostname | ✅✅✅ Highest |
+
+**Example with mutual TLS (mTLS):**
+```json
+{
+  "env": {
+    "DB_TYPE": "postgres",
+    "DB_SSLMODE": "verify-full",
+    "DB_SSLCERT": "C:\\certs\\client-cert.pem",
+    "DB_SSLKEY": "C:\\certs\\client-key.pem",
+    "DB_SSLROOTCERT": "C:\\certs\\ca-cert.pem"
+  }
+}
+```
+
+### MySQL TLS Modes
+
+Configure via `DB_TLS` environment variable:
+
+| Mode | Description | Security Level |
+|------|-------------|----------------|
+| `false` | No TLS encryption ⚠️ **Not recommended for production** | ❌ Low |
+| `preferred` | Use TLS if available, fallback to unencrypted | ⚠️ Medium |
+| `true` | **Default**. Requires TLS connection | ✅ High |
+| `skip-verify` | Requires TLS but doesn't verify server certificate | ⚠️ Medium |
+
+**Example with TLS:**
+```json
+{
+  "env": {
+    "DB_TYPE": "mysql",
+    "DB_TLS": "true"
+  }
+}
+```
+
+### Disabling SSL/TLS (Not Recommended)
+
+For local development or testing only:
+
+**PostgreSQL:**
+```bash
+export DB_SSLMODE=disable
+```
+
+**MySQL:**
+```bash
+export DB_TLS=false
+```
+
+⚠️ **Warning**: Never disable SSL/TLS in production environments. Always use encrypted connections when connecting to remote databases.
+
 ## Security Features
 
+✅ **SSL/TLS Support**: Encrypted connections enabled by default  
 ✅ **Query Builder**: Uses [Squirrel](https://github.com/Masterminds/squirrel) query builder (Go equivalent of Knex.js)  
 ✅ **Parameterized Queries**: All values automatically escaped and parameterized  
 ✅ **Identifier Validation**: Column and table names sanitized before use  
@@ -548,6 +640,7 @@ The server enforces configurable limits on query operations to prevent accidenta
 ✅ **Database validation**: Only configured database can be accessed  
 ✅ **Read-only mode**: Optionally prevent all write operations  
 ✅ **Connection pooling**: Managed by database/sql package  
+✅ **Mutual TLS**: Optional client certificate authentication  
 
 ### SQL Injection Protection
 
@@ -701,7 +794,7 @@ Potential additions beyond the TypeScript version:
 - [ ] Batch operations
 - [ ] Multiple database connections
 - [ ] Connection pooling configuration
-- [ ] SSL/TLS support
+- [x] **SSL/TLS support** ✅ **Implemented with default SSL/TLS enabled**
 - [ ] Query timeout configuration
 - [ ] Query result caching
 - [ ] HTTP transport option

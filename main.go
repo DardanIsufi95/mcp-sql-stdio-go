@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -105,6 +106,7 @@ func main() {
   "params": ["active", 18]
 }
 ` + "```",
+		InputSchema: QueryRawInput{}.JSONSchema().(map[string]interface{}),
 	}, QueryRaw)
 
 	// Register metadata tools
@@ -207,7 +209,12 @@ func main() {
   "params": [100, 0.15]
 }
 ` + "```",
+		InputSchema: ExecuteFunctionInput{}.JSONSchema().(map[string]interface{}),
 	}, ExecuteFunction)
+
+	// Debug log to verify schema
+	rawToolSchema, _ := json.Marshal(QueryRawInput{}.JSONSchema())
+	log.Printf("DEBUG: query_raw schema: %s", string(rawToolSchema))
 
 	log.Printf("Starting MCP SQL server with 13 tools")
 

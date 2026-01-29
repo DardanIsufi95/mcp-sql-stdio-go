@@ -34,6 +34,13 @@ func initDatabase() error {
 	maxSelectLimit = getEnvInt("MAX_SELECT_LIMIT", 1000)
 	maxUpdateLimit = getEnvInt("MAX_UPDATE_LIMIT", 1)
 	maxDeleteLimit = getEnvInt("MAX_DELETE_LIMIT", 1)
+	
+	// SSL configuration (default to require SSL for security)
+	sslMode := getEnv("DB_SSLMODE", "require")         // PostgreSQL: disable, require, verify-ca, verify-full
+	tlsMode := getEnv("DB_TLS", "true")                // MySQL: true, false, skip-verify, preferred
+	sslCert := getEnv("DB_SSLCERT", "")                // Path to client certificate
+	sslKey := getEnv("DB_SSLKEY", "")                  // Path to client key
+	sslRootCert := getEnv("DB_SSLROOTCERT", "")        // Path to CA certificate
 
 	// Parse comma-separated database names
 	dbNames = strings.Split(dbNamesStr, ",")
@@ -51,10 +58,24 @@ func initDatabase() error {
 		if port == "" {
 			port = "5432"
 		}
+		
+		// Build PostgreSQL connection string with SSL support
 		connStr = fmt.Sprintf(
-			"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-			host, port, user, password, primaryDB,
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			host, port, user, password, primaryDB, sslMode,
 		)
+		
+		// Add SSL certificate paths if provided
+		if sslCert != "" {
+			connStr += fmt.Sprintf(" sslcert=%s", sslCert)
+		}
+		if sslKey != "" {
+			connStr += fmt.Sprintf(" sslkey=%s", sslKey)
+		}
+		if sslRootCert != "" {
+			connStr += fmt.Sprintf(" sslrootcert=%s", sslRootCert)
+		}
+		
 		db, err = sql.Open("postgres", connStr)
 		// Use PostgreSQL placeholder format ($1, $2, etc.)
 		qb = sq.StatementBuilder.PlaceholderFormat(sq.Dollar).RunWith(db)
@@ -62,10 +83,24 @@ func initDatabase() error {
 		if port == "" {
 			port = "3306"
 		}
+		
+		// Build MySQL connection string with TLS support
 		connStr = fmt.Sprintf(
 			"%s:%s@tcp(%s:%s)/%s?parseTime=true",
 			user, password, host, port, primaryDB,
 		)
+		
+		// Add TLS configuration for MySQL
+		if tlsMode == "true" {
+			connStr += "&tls=true"
+		} else if tlsMode == "skip-verify" {
+			connStr += "&tls=skip-verify"
+		} else if tlsMode == "preferred" {
+			connStr += "&tls=preferred"
+		} else if tlsMode == "false" {
+			connStr += "&tls=false"
+		}
+		
 		db, err = sql.Open("mysql", connStr)
 		// Use MySQL placeholder format (?)
 		qb = sq.StatementBuilder.PlaceholderFormat(sq.Question).RunWith(db)
@@ -86,6 +121,23 @@ func initDatabase() error {
 	log.Printf("Read-only mode: %v", readOnly)
 	log.Printf("Raw queries allowed: %v", allowRawQuery)
 	log.Printf("Query limits - SELECT: %d, UPDATE: %d, DELETE: %d", maxSelectLimit, maxUpdateLimit, maxDeleteLimit)
+	
+	// Log SSL/TLS configuration
+	if dbType == "postgres" {
+		log.Printf("SSL mode: %s", sslMode)
+		if sslCert != "" {
+			log.Printf("SSL cert: %s", sslCert)
+		}
+		if sslKey != "" {
+			log.Printf("SSL key: %s", sslKey)
+		}
+		if sslRootCert != "" {
+			log.Printf("SSL root cert: %s", sslRootCert)
+		}
+	} else if dbType == "mysql" {
+		log.Printf("TLS mode: %s", tlsMode)
+	}
+	
 	return nil
 }
 

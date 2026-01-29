@@ -44,7 +44,7 @@ type QueryDeleteInput struct {
 type QueryRawInput struct {
 	Database string        `json:"database" jsonschema_description:"Database name"`
 	Query    string        `json:"query" jsonschema_description:"Raw SQL query"`
-	Params   []interface{} `json:"params,omitempty" jsonschema_description:"Query parameters"`
+	Params   []any `json:"params,omitempty" jsonschema_description:"Query parameters (array of values)"`
 }
 
 type GetTablesInput struct {
@@ -83,7 +83,7 @@ type ExecuteFunctionInput struct {
 	Database string        `json:"database" jsonschema_description:"Database name"`
 	Schema   string        `json:"schema,omitempty" jsonschema_description:"Schema name (PostgreSQL)"`
 	Name     string        `json:"name" jsonschema_description:"Function/procedure name"`
-	Params   []interface{} `json:"params,omitempty" jsonschema_description:"Function parameters"`
+	Params   []any `json:"params,omitempty" jsonschema_description:"Function parameters (array of values)"`
 }
 
 // ===== OUTPUT TYPES =====
@@ -112,5 +112,55 @@ type ColumnInfo struct {
 
 type TextOutput struct {
 	Text string `json:"text" jsonschema_description:"Text output"`
+}
+
+// JSONSchema provides custom schema for QueryRawInput to properly define params array
+func (QueryRawInput) JSONSchema() interface{} {
+	return map[string]interface{}{
+		"type": "object",
+		"properties": map[string]interface{}{
+			"database": map[string]interface{}{
+				"type":        "string",
+				"description": "Database name",
+			},
+			"query": map[string]interface{}{
+				"type":        "string",
+				"description": "Raw SQL query",
+			},
+			"params": map[string]interface{}{
+				"type":        "array",
+				"items":       map[string]interface{}{}, // Empty schema allows any type
+				"description": "Query parameters (array of values)",
+			},
+		},
+		"required": []string{"database", "query"},
+	}
+}
+
+// JSONSchema provides custom schema for ExecuteFunctionInput to properly define params array
+func (ExecuteFunctionInput) JSONSchema() interface{} {
+	return map[string]interface{}{
+		"type": "object",
+		"properties": map[string]interface{}{
+			"database": map[string]interface{}{
+				"type":        "string",
+				"description": "Database name",
+			},
+			"schema": map[string]interface{}{
+				"type":        "string",
+				"description": "Schema name (PostgreSQL)",
+			},
+			"name": map[string]interface{}{
+				"type":        "string",
+				"description": "Function/procedure name",
+			},
+			"params": map[string]interface{}{
+				"type":        "array",
+				"items":       map[string]interface{}{}, // Empty schema allows any type
+				"description": "Function parameters (array of values)",
+			},
+		},
+		"required": []string{"database", "name"},
+	}
 }
 
