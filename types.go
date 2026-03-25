@@ -3,14 +3,15 @@ package main
 // ===== INPUT TYPES =====
 
 type QuerySelectInput struct {
-	Database string        `json:"database" jsonschema_description:"Database name"`
-	Table    string        `json:"table" jsonschema_description:"Table name"`
-	Schema   string        `json:"schema,omitempty" jsonschema_description:"Schema name (PostgreSQL)"`
-	Columns  []string      `json:"columns,omitempty" jsonschema_description:"Columns to select (empty for all)"`
-	Where    []WhereClause `json:"where,omitempty" jsonschema_description:"WHERE conditions"`
-	OrderBy  []string      `json:"order_by,omitempty" jsonschema_description:"ORDER BY columns"`
-	Limit    int           `json:"limit,omitempty" jsonschema_description:"LIMIT rows"`
-	Offset   int           `json:"offset,omitempty" jsonschema_description:"OFFSET rows"`
+	Database    string        `json:"database" jsonschema_description:"Database name"`
+	Table       string        `json:"table" jsonschema_description:"Table name"`
+	Schema      string        `json:"schema,omitempty" jsonschema_description:"Schema name (PostgreSQL)"`
+	Columns     []string      `json:"columns,omitempty" jsonschema_description:"Columns to select (empty for all)"`
+	Where       []WhereClause `json:"where,omitempty" jsonschema_description:"WHERE conditions"`
+	OrderBy     []string      `json:"order_by,omitempty" jsonschema_description:"ORDER BY columns"`
+	Limit       int           `json:"limit,omitempty" jsonschema_description:"LIMIT rows"`
+	Offset      int           `json:"offset,omitempty" jsonschema_description:"OFFSET rows"`
+	TrimLongData *bool        `json:"trim_long_data,omitempty" jsonschema_description:"Trim cell content to 50 chars (default: true). Set to false when full content is needed."`
 }
 
 type WhereClause struct {
@@ -42,9 +43,10 @@ type QueryDeleteInput struct {
 }
 
 type QueryRawInput struct {
-	Database string        `json:"database" jsonschema_description:"Database name"`
-	Query    string        `json:"query" jsonschema_description:"Raw SQL query"`
-	Params   []any `json:"params,omitempty" jsonschema_description:"Query parameters (array of values)"`
+	Database     string `json:"database" jsonschema_description:"Database name"`
+	Query        string `json:"query" jsonschema_description:"Raw SQL query"`
+	Params       []any  `json:"params,omitempty" jsonschema_description:"Query parameters (array of values)"`
+	TrimLongData *bool  `json:"trim_long_data,omitempty" jsonschema_description:"Trim cell content to 50 chars (default: true). Set to false when full content is needed."`
 }
 
 type GetTablesInput struct {
@@ -131,6 +133,10 @@ func (QueryRawInput) JSONSchema() interface{} {
 				"type":        "array",
 				"items":       map[string]interface{}{}, // Empty schema allows any type
 				"description": "Query parameters (array of values)",
+			},
+			"trim_long_data": map[string]interface{}{
+				"type":        "boolean",
+				"description": "Trim cell content to 50 chars (default: true). Set to false when full content is needed.",
 			},
 		},
 		"required": []string{"database", "query"},

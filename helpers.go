@@ -174,7 +174,7 @@ func scanRows(rows *sql.Rows) ([]map[string]interface{}, error) {
 	return results, rows.Err()
 }
 
-func formatResults(rows []map[string]interface{}, title string) string {
+func formatResults(rows []map[string]interface{}, title string, trimLongData bool) string {
 	if len(rows) == 0 {
 		return fmt.Sprintf("✓ %s\n\nNo rows found", title)
 	}
@@ -208,9 +208,8 @@ func formatResults(rows []map[string]interface{}, title string) string {
 			if val == nil {
 				result.WriteString(" NULL |")
 			} else {
-				// Limit cell content to 50 chars
 				valStr := fmt.Sprintf("%v", val)
-				if len(valStr) > 50 {
+				if trimLongData && len(valStr) > 50 {
 					valStr = valStr[:47] + "..."
 				}
 				result.WriteString(fmt.Sprintf(" %s |", valStr))

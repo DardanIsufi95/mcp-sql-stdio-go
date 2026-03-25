@@ -78,7 +78,11 @@ func QuerySelect(ctx context.Context, req *mcp.CallToolRequest, input QuerySelec
 		return nil, struct{}{}, err
 	}
 
-	text := formatResults(results, fmt.Sprintf("SELECT from %s.%s", input.Database, input.Table))
+	trimLongData := true
+	if input.TrimLongData != nil {
+		trimLongData = *input.TrimLongData
+	}
+	text := formatResults(results, fmt.Sprintf("SELECT from %s.%s", input.Database, input.Table), trimLongData)
 	
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
@@ -306,7 +310,11 @@ func QueryRaw(ctx context.Context, req *mcp.CallToolRequest, input QueryRawInput
 			return nil, struct{}{}, err
 		}
 
-		text := formatResults(results, "Raw query successful")
+		trimLongData := true
+		if input.TrimLongData != nil {
+			trimLongData = *input.TrimLongData
+		}
+		text := formatResults(results, "Raw query successful", trimLongData)
 		
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
