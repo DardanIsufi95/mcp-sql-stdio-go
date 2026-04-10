@@ -9,25 +9,25 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func GetDatabases(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, struct{}, error) {
+func GetDatabases(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, any, error) {
 	// Return the configured database allowlist
 	var output strings.Builder
 	for _, db := range dbNames {
 		output.WriteString(fmt.Sprintf("• %s\n", db))
 	}
-	
+
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{
 				Text: output.String(),
 			},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
 
-func GetTables(ctx context.Context, req *mcp.CallToolRequest, input GetTablesInput) (*mcp.CallToolResult, struct{}, error) {
+func GetTables(ctx context.Context, req *mcp.CallToolRequest, input GetTablesInput) (*mcp.CallToolResult, any, error) {
 	if err := validateDatabase(input.Database); err != nil {
-		return nil, struct{}{}, err
+		return nil, nil, err
 	}
 
 	var query string
@@ -47,7 +47,7 @@ func GetTables(ctx context.Context, req *mcp.CallToolRequest, input GetTablesInp
 
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, struct{}{}, fmt.Errorf("failed to get tables: %w", err)
+		return nil, nil, fmt.Errorf("failed to get tables: %w", err)
 	}
 	defer rows.Close()
 
@@ -55,7 +55,7 @@ func GetTables(ctx context.Context, req *mcp.CallToolRequest, input GetTablesInp
 	for rows.Next() {
 		var table string
 		if err := rows.Scan(&table); err != nil {
-			return nil, struct{}{}, err
+			return nil, nil, err
 		}
 		tables = append(tables, table)
 	}
@@ -71,12 +71,12 @@ func GetTables(ctx context.Context, req *mcp.CallToolRequest, input GetTablesInp
 				Text: output.String(),
 			},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
 
-func GetTableSchema(ctx context.Context, req *mcp.CallToolRequest, input GetTableSchemaInput) (*mcp.CallToolResult, struct{}, error) {
+func GetTableSchema(ctx context.Context, req *mcp.CallToolRequest, input GetTableSchemaInput) (*mcp.CallToolResult, any, error) {
 	if err := validateDatabase(input.Database); err != nil {
-		return nil, struct{}{}, err
+		return nil, nil, err
 	}
 
 	var result string
@@ -92,7 +92,7 @@ func GetTableSchema(ctx context.Context, req *mcp.CallToolRequest, input GetTabl
 				Text: result,
 			},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
 
 func getPostgreSQLTableSchema(ctx context.Context, input GetTableSchemaInput) string {
@@ -284,11 +284,11 @@ func getMySQLTableSchema(ctx context.Context, input GetTableSchemaInput) string 
 		defer indexRows.Close()
 		hasIndexes := false
 		indexMap := make(map[string]string)
-		
+
 		for indexRows.Next() {
 			var tableName, nonUnique, keyName, seqInIndex, columnName, collation, cardinality, subPart, packed, null, indexType, comment, indexComment, visible, expression sql.NullString
 			indexRows.Scan(&tableName, &nonUnique, &keyName, &seqInIndex, &columnName, &collation, &cardinality, &subPart, &packed, &null, &indexType, &comment, &indexComment, &visible, &expression)
-			
+
 			if keyName.Valid && keyName.String != "PRIMARY" {
 				indexType := "INDEX"
 				if nonUnique.Valid && nonUnique.String == "0" {
@@ -297,7 +297,7 @@ func getMySQLTableSchema(ctx context.Context, input GetTableSchemaInput) string 
 				indexMap[keyName.String] = indexType
 			}
 		}
-		
+
 		if len(indexMap) > 0 {
 			output += "\nIndexes:\n"
 			for indexName, indexType := range indexMap {
@@ -305,7 +305,7 @@ func getMySQLTableSchema(ctx context.Context, input GetTableSchemaInput) string 
 			}
 			hasIndexes = true
 		}
-		
+
 		if !hasIndexes {
 			// output += "\nNo indexes found\n"
 		}
@@ -314,9 +314,9 @@ func getMySQLTableSchema(ctx context.Context, input GetTableSchemaInput) string 
 	return output
 }
 
-func GetSequences(ctx context.Context, req *mcp.CallToolRequest, input GetSequencesInput) (*mcp.CallToolResult, struct{}, error) {
+func GetSequences(ctx context.Context, req *mcp.CallToolRequest, input GetSequencesInput) (*mcp.CallToolResult, any, error) {
 	if err := validateDatabase(input.Database); err != nil {
-		return nil, struct{}{}, err
+		return nil, nil, err
 	}
 
 	var result string
@@ -333,11 +333,11 @@ func GetSequences(ctx context.Context, req *mcp.CallToolRequest, input GetSequen
 			WHERE sequence_catalog = $1 AND sequence_schema = $2
 			ORDER BY sequence_name`
 
-	rows, err := db.QueryContext(ctx, query, input.Database, schema)
-	if err != nil {
-		return nil, struct{}{}, err
-	}
-	defer rows.Close()
+		rows, err := db.QueryContext(ctx, query, input.Database, schema)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer rows.Close()
 
 		result = fmt.Sprintf("Sequences in %s.%s:\n\n", input.Database, schema)
 		hasSequences := false
@@ -363,7 +363,7 @@ func GetSequences(ctx context.Context, req *mcp.CallToolRequest, input GetSequen
 
 		rows, err := db.QueryContext(ctx, query, input.Database)
 		if err != nil {
-			return nil, struct{}{}, err
+			return nil, nil, err
 		}
 		defer rows.Close()
 
@@ -387,10 +387,10 @@ func GetSequences(ctx context.Context, req *mcp.CallToolRequest, input GetSequen
 				Text: result,
 			},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
 
-func GetCustomTypes(ctx context.Context, req *mcp.CallToolRequest, input GetCustomTypesInput) (*mcp.CallToolResult, struct{}, error) {
+func GetCustomTypes(ctx context.Context, req *mcp.CallToolRequest, input GetCustomTypesInput) (*mcp.CallToolResult, any, error) {
 	if dbType != "postgres" {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
@@ -398,11 +398,11 @@ func GetCustomTypes(ctx context.Context, req *mcp.CallToolRequest, input GetCust
 					Text: "Custom types are only supported in PostgreSQL",
 				},
 			},
-		}, struct{}{}, nil
+		}, nil, nil
 	}
 
 	if err := validateDatabase(input.Database); err != nil {
-		return nil, struct{}{}, err
+		return nil, nil, err
 	}
 
 	schema := input.Schema
@@ -428,7 +428,7 @@ func GetCustomTypes(ctx context.Context, req *mcp.CallToolRequest, input GetCust
 
 	rows, err := db.QueryContext(ctx, query, schema)
 	if err != nil {
-		return nil, struct{}{}, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
@@ -472,6 +472,5 @@ func GetCustomTypes(ctx context.Context, req *mcp.CallToolRequest, input GetCust
 				Text: result,
 			},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
-

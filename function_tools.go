@@ -8,9 +8,9 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func GetFunctions(ctx context.Context, req *mcp.CallToolRequest, input GetFunctionsInput) (*mcp.CallToolResult, struct{}, error) {
+func GetFunctions(ctx context.Context, req *mcp.CallToolRequest, input GetFunctionsInput) (*mcp.CallToolResult, any, error) {
 	if err := validateDatabase(input.Database); err != nil {
-		return nil, struct{}{}, err
+		return nil, nil, err
 	}
 
 	var result string
@@ -41,7 +41,7 @@ func GetFunctions(ctx context.Context, req *mcp.CallToolRequest, input GetFuncti
 
 		rows, err := db.QueryContext(ctx, query, schema)
 		if err != nil {
-			return nil, struct{}{}, err
+			return nil, nil, err
 		}
 		defer rows.Close()
 
@@ -121,7 +121,7 @@ func GetFunctions(ctx context.Context, req *mcp.CallToolRequest, input GetFuncti
 
 		rows, err := db.QueryContext(ctx, query, input.Database)
 		if err != nil {
-			return nil, struct{}{}, err
+			return nil, nil, err
 		}
 		defer rows.Close()
 
@@ -182,12 +182,12 @@ func GetFunctions(ctx context.Context, req *mcp.CallToolRequest, input GetFuncti
 				Text: result,
 			},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
 
-func GetFunctionSource(ctx context.Context, req *mcp.CallToolRequest, input GetFunctionSourceInput) (*mcp.CallToolResult, struct{}, error) {
+func GetFunctionSource(ctx context.Context, req *mcp.CallToolRequest, input GetFunctionSourceInput) (*mcp.CallToolResult, any, error) {
 	if err := validateDatabase(input.Database); err != nil {
-		return nil, struct{}{}, err
+		return nil, nil, err
 	}
 
 	var result string
@@ -212,7 +212,7 @@ func GetFunctionSource(ctx context.Context, req *mcp.CallToolRequest, input GetF
 
 		rows, err := db.QueryContext(ctx, query, schema, input.Name)
 		if err != nil {
-			return nil, struct{}{}, err
+			return nil, nil, err
 		}
 		defer rows.Close()
 
@@ -236,7 +236,7 @@ func GetFunctionSource(ctx context.Context, req *mcp.CallToolRequest, input GetF
 
 		rows, err := db.QueryContext(ctx, query, input.Database, input.Name)
 		if err != nil {
-			return nil, struct{}{}, err
+			return nil, nil, err
 		}
 		defer rows.Close()
 
@@ -258,12 +258,12 @@ func GetFunctionSource(ctx context.Context, req *mcp.CallToolRequest, input GetF
 				Text: result,
 			},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
 
-func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input ExecuteFunctionInput) (*mcp.CallToolResult, struct{}, error) {
+func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input ExecuteFunctionInput) (*mcp.CallToolResult, any, error) {
 	if err := validateDatabase(input.Database); err != nil {
-		return nil, struct{}{}, err
+		return nil, nil, err
 	}
 
 	var result string
@@ -283,14 +283,14 @@ func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input Execut
 		var prokind string
 		err := db.QueryRowContext(ctx, typeQuery, schema, input.Name).Scan(&prokind)
 		if err != nil {
-			return nil, struct{}{}, fmt.Errorf("function or procedure '%s' not found in %s", input.Name, schema)
+			return nil, nil, fmt.Errorf("function or procedure '%s' not found in %s", input.Name, schema)
 		}
 
 		isProcedure := prokind == "p"
 
 		// Check read-only for procedures
 		if isProcedure && readOnly {
-			return nil, struct{}{}, fmt.Errorf("stored procedures are not allowed in read-only mode")
+			return nil, nil, fmt.Errorf("stored procedures are not allowed in read-only mode")
 		}
 
 		// Build parameter placeholders
@@ -306,7 +306,7 @@ func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input Execut
 			query := fmt.Sprintf("CALL %s(%s)", qualifiedName, paramStr)
 			rows, err := db.QueryContext(ctx, query, input.Params...)
 			if err != nil {
-				return nil, struct{}{}, fmt.Errorf("procedure execution failed: %w", err)
+				return nil, nil, fmt.Errorf("procedure execution failed: %w", err)
 			}
 			defer rows.Close()
 
@@ -318,7 +318,7 @@ func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input Execut
 			var funcResult interface{}
 			err := db.QueryRowContext(ctx, query, input.Params...).Scan(&funcResult)
 			if err != nil {
-				return nil, struct{}{}, fmt.Errorf("function execution failed: %w", err)
+				return nil, nil, fmt.Errorf("function execution failed: %w", err)
 			}
 			result = fmt.Sprintf("✓ Function executed successfully\n\nResult: %v", funcResult)
 		}
@@ -332,20 +332,20 @@ func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input Execut
 		var routineType string
 		err := db.QueryRowContext(ctx, typeQuery, input.Database, input.Name).Scan(&routineType)
 		if err != nil {
-			return nil, struct{}{}, fmt.Errorf("function or procedure '%s' not found in %s", input.Name, input.Database)
+			return nil, nil, fmt.Errorf("function or procedure '%s' not found in %s", input.Name, input.Database)
 		}
 
 		isProcedure := routineType == "PROCEDURE"
 
 		// Check read-only for procedures
 		if isProcedure && readOnly {
-			return nil, struct{}{}, fmt.Errorf("stored procedures are not allowed in read-only mode")
+			return nil, nil, fmt.Errorf("stored procedures are not allowed in read-only mode")
 		}
 
 		// Switch database
 		_, err = db.ExecContext(ctx, fmt.Sprintf("USE `%s`", input.Database))
 		if err != nil {
-			return nil, struct{}{}, err
+			return nil, nil, err
 		}
 
 		// Build parameter placeholders
@@ -360,7 +360,7 @@ func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input Execut
 			query := fmt.Sprintf("CALL %s(%s)", input.Name, paramStr)
 			rows, err := db.QueryContext(ctx, query, input.Params...)
 			if err != nil {
-				return nil, struct{}{}, fmt.Errorf("procedure execution failed: %w", err)
+				return nil, nil, fmt.Errorf("procedure execution failed: %w", err)
 			}
 			defer rows.Close()
 
@@ -372,7 +372,7 @@ func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input Execut
 			var funcResult interface{}
 			err := db.QueryRowContext(ctx, query, input.Params...).Scan(&funcResult)
 			if err != nil {
-				return nil, struct{}{}, fmt.Errorf("function execution failed: %w", err)
+				return nil, nil, fmt.Errorf("function execution failed: %w", err)
 			}
 			result = fmt.Sprintf("✓ Function executed successfully\n\nResult: %v", funcResult)
 		}
@@ -384,6 +384,5 @@ func ExecuteFunction(ctx context.Context, req *mcp.CallToolRequest, input Execut
 				Text: result,
 			},
 		},
-	}, struct{}{}, nil
+	}, nil, nil
 }
-
