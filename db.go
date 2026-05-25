@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -61,7 +60,7 @@ func initDatabase() error {
 		
 		// Build PostgreSQL connection string with SSL support
 		connStr = fmt.Sprintf(
-			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+			"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s search_path=public,pg_catalog",
 			host, port, user, password, primaryDB, sslMode,
 		)
 		
@@ -116,28 +115,6 @@ func initDatabase() error {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	log.Printf("Connected to %s database(s): %v", dbType, dbNames)
-	log.Printf("Primary database: %s", primaryDB)
-	log.Printf("Read-only mode: %v", readOnly)
-	log.Printf("Raw queries allowed: %v", allowRawQuery)
-	log.Printf("Query limits - SELECT: %d, UPDATE: %d, DELETE: %d", maxSelectLimit, maxUpdateLimit, maxDeleteLimit)
-	
-	// Log SSL/TLS configuration
-	if dbType == "postgres" {
-		log.Printf("SSL mode: %s", sslMode)
-		if sslCert != "" {
-			log.Printf("SSL cert: %s", sslCert)
-		}
-		if sslKey != "" {
-			log.Printf("SSL key: %s", sslKey)
-		}
-		if sslRootCert != "" {
-			log.Printf("SSL root cert: %s", sslRootCert)
-		}
-	} else if dbType == "mysql" {
-		log.Printf("TLS mode: %s", tlsMode)
-	}
-	
 	return nil
 }
 
@@ -154,7 +131,7 @@ func getEnvInt(key string, defaultValue int) int {
 		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
 			return intValue
 		}
-		log.Printf("Warning: Invalid integer value for %s: %s, using default: %d", key, value, defaultValue)
+		fmt.Fprintf(os.Stderr, "Warning: Invalid integer value for %s: %s, using default: %d\n", key, value, defaultValue)
 	}
 	return defaultValue
 }
